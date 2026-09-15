@@ -40,7 +40,7 @@ per-head factors and a Hadamard rotation inside the kernels do two to four
 times that and are headed upstream as comfy-kitchen PRs
 ([policy and status](https://github.com/fblissjr/ComfyUI-h3-explorations/blob/main/docs/h3_quant_policy.md)).
 
-## What ships here
+## What's in here
 
 `MiniMax H3 Channel Balance`: since `q . k == (q * f) . (k / f)`, it folds
 `k_norm.weight / f` and `q_norm.weight * f` into the model at load on the
@@ -50,7 +50,7 @@ kernels, no forks, zero render-time cost, off by default. It does nothing
 useful on plain pytorch attention or on the kitchen dense backend without
 Sol, because neither has the problem.
 
-## Try it
+## Try it?
 
 Put this folder in `custom_nodes/`, run the scan, add the node between the
 model loader and your attention nodes, render one prompt with `balance` off
@@ -62,7 +62,7 @@ checkpoint and what changed, or did not, is the result this repo wants.
 
 ## What is uncertain
 
-One machine, one capture set, unblinded viewers; fp8 attention unmeasured;
+A ton. One machine, one capture set, unblinded viewers; fp8 attention unmeasured;
 the fold is not the ceiling (bf16 on the three blocks still looked a little
 better); nothing here concerns the quantized linears. The full list, with
 what would settle each item, is in the
