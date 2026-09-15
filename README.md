@@ -1,16 +1,37 @@
-# MiniMax H3 channel balance for INT8 attention
+# Better INT8 attention for MiniMax H3 in ComfyUI
 
-A single ComfyUI node that makes INT8 attention (SageAttention, and the
-Sol / block-sparse kernel in comfy-kitchen) lose less on MiniMax H3's last
-blocks. Off by default. No custom kernels, no forks: it changes two
-weight vectors per block when the model loads, through ComfyUI's own model
-patcher, and costs nothing at render time.
+MiniMax H3 at long lengths runs on INT8 attention, because bf16 attention
+over a hundred thousand tokens is too slow: SageAttention on the dense
+steps, the Sol / block-sparse kernel on the routed ones. Both round q and k
+to eight bits with one scale per row, and that rounding is not free where
+the model's weights make some channels loud. This repo is where the work
+on making that rounding cheaper lives: what is measured, what is fixed,
+what ships.
 
-**Who this is for.** People rendering H3 with `--use-sage-attention`, or
-with the Block Sparse Attention node (Sol) on the routed steps. If your
-graph runs plain pytorch attention, or the Model Attention Backend node on
-"comfy kitchen attention" for every step, this node does nothing useful:
-those paths do not have the problem.
+**What ships today: one node.** `MiniMax H3 Channel Balance` folds a
+per-channel q/k rebalancing into the norm weights of the blocks whose
+K-norm is lopsided (45, 48 and 49 on every released checkpoint), so
+unrotated INT8 attention loses less there. Exact for every attention
+score, applied through ComfyUI's own model patcher when the model loads,
+zero cost at render time, off by default. No custom kernels, no forks,
+works on whatever INT8 attention the graph already runs.
+
+**What is behind it, and where the rest is going.** Two in-kernel forms of
+the same idea (a per-head factor inside the quantizer, and a fixed
+Hadamard rotation of q/k before it) live in the kitchen and sage forks and
+do about twice to four times what the node does; they reach users as
+comfy-kitchen PRs. Sol's routing decides which blocks are exact from INT8
+centroid scores, so the same rounding moves the route; that is the next
+thing on the list. The measurements (captured activations, per kernel,
+against fp32 attention on the same inputs) are what every claim here rests
+on, and the scripts to redo them are linked at the bottom.
+
+**Who this is for.** Anyone whose H3 graph routes attention through
+SageAttention (a Sage node, or the global flag) or through the Block
+Sparse Attention node. If your graph runs plain pytorch attention, or the
+Model Attention Backend node on "comfy kitchen attention" for every step,
+the node does nothing useful: those paths do not have the problem, because
+the kitchen dense kernel already rotates q/k before rounding.
 
 ## The problem, in four sentences
 
